@@ -57,6 +57,26 @@ struct  Plane
 	Vector3 normal;
 	float distance;
 };
+struct Triangle
+{
+	Vector3 vertices[3];
+};
+
+Vector3 operator+(Vector3 num1, Vector3 num2) {
+	num1.x += num2.x;
+	num1.y += num2.y;
+	num1.z += num2.z;
+
+	return num1;
+}
+
+Vector3 operator-(Vector3 num1, Vector3 num2) {
+	num1.x -= num2.x;
+	num1.y -= num2.y;
+	num1.z -= num2.z;
+
+	return num1;
+}
 
 void VectorScreenPrintf(int x, int y, const Vector3& vector, const char* label) {
 	Novice::ScreenPrintf(x, y, "%.02f", vector.x);
@@ -706,6 +726,38 @@ bool IsCollision(const Segment& segment, const Plane& plane) {
 
 	return t >= 0.0f && t <= 1.0f;
 }
+//三角形と線
+bool IsCollision(const Triangle& triangle, const Segment& segmrnt) {
+
+	Plane plane;
+	Vector3 v01 = triangle.vertices[1] - triangle.vertices[0];
+	Vector3 v12 = triangle.vertices[2] - triangle.vertices[1];
+	Vector3 v20 = triangle.vertices[0] - triangle.vertices[2];
+
+	plane.normal = Normalize(Cross(v01, v12));
+	plane.distance = Dot(triangle.vertices[0], plane.normal);
+
+	float t = (plane.distance - Dot(segmrnt.origin, plane.normal)) / Dot(plane.normal, segmrnt.diff);
+
+	Vector3 tb = Multiply(t, segmrnt.diff);
+
+	Vector3 p = segmrnt.origin + tb;
+
+	Vector3 v0p = p - triangle.vertices[0];
+	Vector3 v1p = p - triangle.vertices[1];
+	Vector3 v2p = p - triangle.vertices[2];
+
+	Vector3 cross01 = Cross(v01, v1p);
+	Vector3 cross12 = Cross(v12, v2p);
+	Vector3 cross20 = Cross(v20, v0p);
+
+	if (Dot(cross01, plane.normal) >= 0.0f &&
+		Dot(cross12, plane.normal) >= 0.0f &&
+		Dot(cross20, plane.normal) >= 0.0f) {
+		return true;
+	}
+	return false;
+}
 
 Vector3 Perpendicular(const Vector3& vector) {
 	if (vector.x != 0.0f || vector.y != 0.0f) {
@@ -736,6 +788,17 @@ void DrawPlane(const Plane& plane, const Matrix4x4& viewProjectionMatrix, const 
 	Novice::DrawLine(int(points[3].x), int(points[3].y), int(points[1].x), int(points[1].y), color);
 	Novice::DrawLine(int(points[3].x), int(points[3].y), int(points[0].x), int(points[0].y), color);
 }
+void DrawTriangle(const Triangle& triangle, const Matrix4x4& viewProjectionMattrix, const Matrix4x4& viewportMatrix, uint32_t color) {
+
+	Vector3 start[3];
+	Vector3 end[3];
+
+	for (uint32_t i = 0; i < 3; i++) {
+		start[i] = Transform(Transform(triangle.vertices[i], viewProjectionMattrix), viewportMatrix);
+		end[i] = Transform(Transform(triangle.vertices[(i + 1) % 3], viewProjectionMattrix), viewportMatrix);
+		Novice::DrawLine(int(start[i].x), int(start[i].y), int(end[i].x), int(end[i].y), color);
+	}
+}
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
@@ -751,21 +814,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Vector3 cameraTranslate{ 0.0f,0.0f,-10.0f };
 	Vector3 cameraRotato{ 0.0f,0.0f,0.0f };
 
-	Plane plane;
-	plane.distance = 1.0f;
-	plane.normal = { 0.0f,1.0f,0.0f };
+
 
 	Segment segmrnt;
 	segmrnt.diff = { 0.45f,0.78f,0.0f };
 	segmrnt.origin = { 1.0f,0.58f,0.0f };
 
+	Triangle triangle;
+	triangle.vertices[0] = { -1.0f, 0.0f, 0.0f };
+	triangle.vertices[1] = { 0.0f, 1.0f, 0.0f };
+	triangle.vertices[2] = { 1.0f, 0.0f, 0.0f };
 
 	Vector3 rotate{};
 	Vector3 translate{};
 	Vector3 Scale = { 1.0f,1.0f,1.0f };
 
-	Vector3 SegmentDiff;
-	Vector3 SegmentOrigin;
+	Vector3 start{};
+	Vector3 end{};
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -794,15 +859,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		ImGui::DragFloat3("CameraRotato", &cameraRotato.x, 0.01f);
 		ImGui::DragFloat3("segmrnt.diff", &segmrnt.diff.x, 0.01f);
 		ImGui::DragFloat("segmrnt.origin", &segmrnt.origin.x, 0.01f);
-		ImGui::DragFloat3("Plane.Normal", &plane.normal.x, 0.01f);
-		ImGui::DragFloat("Plane.distance", &plane.distance, 0.01f);
+		ImGui::DragFloat3("triangle.vertices[0]", &triangle.vertices[0].x, 0.01f);
+		ImGui::DragFloat3("triangle.vertices[1]", &triangle.vertices[1].x, 0.01f);
+		ImGui::DragFloat3("triangle.vertices[2]", &triangle.vertices[2].x, 0.01f);
 
 		ImGui::End();
 
-		plane.normal = Normalize(plane.normal);
 
-		SegmentDiff = Transform(Transform(segmrnt.diff, viewProjectionMatrix), viewportMatrix);
-		SegmentOrigin = Transform(Transform(segmrnt.origin, viewProjectionMatrix), viewportMatrix);
+
+		start = Transform(Transform(segmrnt.diff, viewProjectionMatrix), viewportMatrix);
+		end = Transform(Transform(segmrnt.origin, viewProjectionMatrix), viewportMatrix);
 
 		///
 		///
@@ -815,16 +881,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		///
 		/// ↓描画処理ここから
 		///
-		DrawPlane(plane, viewProjectionMatrix, viewportMatrix, WHITE);
+		DrawTriangle(triangle, viewProjectionMatrix, viewportMatrix, WHITE);
 
-		Novice::DrawLine((int)SegmentDiff.x, (int)SegmentDiff.y, (int)SegmentOrigin.x, (int)SegmentOrigin.y, WHITE);
-
-		if (IsCollision(segmrnt, plane)) {
-			Novice::DrawLine((int)SegmentDiff.x, (int)SegmentDiff.y, (int)SegmentOrigin.x, (int)SegmentOrigin.y, RED);
+		Novice::DrawLine((int)start.x, (int)start.y, (int)end.x, (int)end.y, WHITE);
+		if (IsCollision(triangle, segmrnt)) {
+			Novice::DrawLine((int)start.x, (int)start.y, (int)end.x, (int)end.y, RED);
 
 		}
-
-
 
 		DrawGrid(viewProjectionMatrix, viewportMatrix);
 
