@@ -696,6 +696,17 @@ bool IsCollision(const Sphere& sphere, const Plane& plane) {
 	return false;
 }
 
+//線と平面
+bool IsCollision(const Segment& segment, const Plane& plane) {
+	float dot = Dot(plane.normal, segment.diff);
+	if (dot == 0.0f) {
+		return false;
+	}
+	float t = (plane.distance - Dot(segment.origin, plane.normal)) / dot;
+
+	return t >= 0.0f && t <= 1.0f;
+}
+
 Vector3 Perpendicular(const Vector3& vector) {
 	if (vector.x != 0.0f || vector.y != 0.0f) {
 		return { -vector.y, vector.x, 0.0f };
@@ -737,20 +748,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	char preKeys[256] = { 0 };
 
 
-	Vector3 cameraTranslate{ 0.0f,1.9f,-6.49f };
-	Vector3 cameraRotato{ 0.26f,0.0f,0.0f };
+	Vector3 cameraTranslate{ 0.0f,0.0f,-10.0f };
+	Vector3 cameraRotato{ 0.0f,0.0f,0.0f };
 
-	Sphere sphere;
-	sphere.center = { -10.0f, -40.0f, 162.0f };
-	sphere.radius = 30;
+	Plane plane;
+	plane.distance = 1.0f;
+	plane.normal = { 0.0f,1.0f,0.0f };
 
-	Sphere sphere2;
-	sphere2.center = { 40.0f, -40.0f,162.0f };
-	sphere2.radius = 20;
+	Segment segmrnt;
+	segmrnt.diff = { 0.45f,0.78f,0.0f };
+	segmrnt.origin = { 1.0f,0.58f,0.0f };
+
 
 	Vector3 rotate{};
 	Vector3 translate{};
 	Vector3 Scale = { 1.0f,1.0f,1.0f };
+
+	Vector3 SegmentDiff;
+	Vector3 SegmentOrigin;
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -769,7 +784,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		Matrix4x4 cameraMatrix = MakeAffineMatrix(Scale, cameraRotato, cameraTranslate);
 		Matrix4x4 viewMatrix = Invers(cameraMatrix);
 		Matrix4x4 projectionMatrix = MakePersectiveFovMatrix(0.45f, float(kWindowWith) / float(kWindowHigat), 0.1f, 100.0f);
-		Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
+		Matrix4x4 viewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 		Matrix4x4 viewportMatrix = MakeViewportMatrix(0, 0, float(kWindowWith), float(kWindowHigat), 0.0f, 1.0f);
 
 
@@ -777,11 +792,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		ImGui::Begin("Window");
 		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("CameraRotato", &cameraRotato.x, 0.01f);
-		ImGui::DragFloat3("Sphere1Center", &sphere.center.x, 0.01f);
-		ImGui::DragFloat("Sphere1Radius", &sphere.radius, 0.01f);
-		ImGui::DragFloat3("Sphere2Center", &sphere2.center.x, 0.01f);
-		ImGui::DragFloat("Sphere2Radius", &sphere2.radius, 0.01f);
+		ImGui::DragFloat3("segmrnt.diff", &segmrnt.diff.x, 0.01f);
+		ImGui::DragFloat("segmrnt.origin", &segmrnt.origin.x, 0.01f);
+		ImGui::DragFloat3("Plane.Normal", &plane.normal.x, 0.01f);
+		ImGui::DragFloat("Plane.distance", &plane.distance, 0.01f);
+
 		ImGui::End();
+
+		plane.normal = Normalize(plane.normal);
+
+		SegmentDiff = Transform(Transform(segmrnt.diff, viewProjectionMatrix), viewportMatrix);
+		SegmentOrigin = Transform(Transform(segmrnt.origin, viewProjectionMatrix), viewportMatrix);
 
 		///
 		///
@@ -794,17 +815,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		///
 		/// ↓描画処理ここから
 		///
-		DrawSphere(sphere, worldViewProjectionMatrix, viewportMatrix, WHITE);
+		DrawPlane(plane, viewProjectionMatrix, viewportMatrix, WHITE);
 
-		DrawSphere(sphere2, worldViewProjectionMatrix, viewportMatrix, WHITE);
+		Novice::DrawLine((int)SegmentDiff.x, (int)SegmentDiff.y, (int)SegmentOrigin.x, (int)SegmentOrigin.y, WHITE);
 
-		if (IsCollision(sphere, sphere2)) {
-			DrawSphere(sphere2, worldViewProjectionMatrix, viewportMatrix, RED);
+		if (IsCollision(segmrnt, plane)) {
+			Novice::DrawLine((int)SegmentDiff.x, (int)SegmentDiff.y, (int)SegmentOrigin.x, (int)SegmentOrigin.y, RED);
+
 		}
 
 
 
-		DrawGrid(worldViewProjectionMatrix, viewportMatrix);
+		DrawGrid(viewProjectionMatrix, viewportMatrix);
 
 
 		///
