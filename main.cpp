@@ -6,7 +6,7 @@
 #define _USE_MATH_DEFINES
 #include<cmath>
 #include<imgui.h>
-const char kWindowTitle[] = "GC2C_01_オガワ_リョウ_2-0";
+const char kWindowTitle[] = "GC2C_02_カナイ_ショウタ_タイトル";
 
 static const int kRowHeight = 20;
 static const int kColumnWidth = 60;
