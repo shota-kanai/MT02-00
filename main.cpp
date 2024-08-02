@@ -61,6 +61,11 @@ struct Triangle
 {
 	Vector3 vertices[3];
 };
+struct AABB
+{
+	Vector3 min;
+	Vector3 max;
+};
 
 Vector3 operator+(Vector3 num1, Vector3 num2) {
 	num1.x += num2.x;
@@ -758,6 +763,18 @@ bool IsCollision(const Triangle& triangle, const Segment& segmrnt) {
 	}
 	return false;
 }
+//aabbとaabb
+bool IsCollision(const AABB& aabb1, const AABB& aabb2) {
+
+	if ((aabb1.min.x <= aabb2.max.x && aabb1.max.x >= aabb2.min.x) &&
+		(aabb1.min.y <= aabb2.max.y && aabb1.max.y >= aabb2.min.y) &&
+		(aabb1.min.z <= aabb2.max.z && aabb1.max.z >= aabb2.min.z)) {
+		return true;
+	}
+
+	return false;
+
+}
 
 Vector3 Perpendicular(const Vector3& vector) {
 	if (vector.x != 0.0f || vector.y != 0.0f) {
@@ -799,6 +816,39 @@ void DrawTriangle(const Triangle& triangle, const Matrix4x4& viewProjectionMattr
 		Novice::DrawLine(int(start[i].x), int(start[i].y), int(end[i].x), int(end[i].y), color);
 	}
 }
+void DrawAABB(const AABB& aabb, const Matrix4x4& viewProjectionMatrix, const Matrix4x4 viewportMatrix, uint32_t color) {
+	Vector3 end[12]{};
+	Vector3 start[12]{};
+
+	start[0] = Transform(Transform(aabb.min, viewProjectionMatrix), viewportMatrix);
+	end[0] = Transform(Transform({ aabb.min.x, aabb.min.y, aabb.max.z }, viewProjectionMatrix), viewportMatrix);
+	start[1] = Transform(Transform(aabb.min, viewProjectionMatrix), viewportMatrix);
+	end[1] = Transform(Transform({ aabb.min.x, aabb.max.y, aabb.min.z }, viewProjectionMatrix), viewportMatrix);
+	start[2] = Transform(Transform({ aabb.min.x, aabb.max.y, aabb.min.z }, viewProjectionMatrix), viewportMatrix);
+	end[2] = Transform(Transform({ aabb.min.x, aabb.max.y, aabb.max.z }, viewProjectionMatrix), viewportMatrix);
+	start[3] = Transform(Transform({ aabb.min.x, aabb.max.y, aabb.max.z }, viewProjectionMatrix), viewportMatrix);
+	end[3] = Transform(Transform({ aabb.min.x, aabb.min.y, aabb.max.z }, viewProjectionMatrix), viewportMatrix);
+	start[4] = Transform(Transform({ aabb.min.x, aabb.min.y, aabb.max.z }, viewProjectionMatrix), viewportMatrix);
+	end[4] = Transform(Transform({ aabb.max.x, aabb.min.y, aabb.max.z }, viewProjectionMatrix), viewportMatrix);
+	start[5] = Transform(Transform(aabb.min, viewProjectionMatrix), viewportMatrix);
+	end[5] = Transform(Transform({ aabb.max.x, aabb.min.y, aabb.min.z }, viewProjectionMatrix), viewportMatrix);
+	start[6] = Transform(Transform({ aabb.min.x, aabb.max.y, aabb.min.z }, viewProjectionMatrix), viewportMatrix);
+	end[6] = Transform(Transform({ aabb.max.x, aabb.max.y, aabb.min.z }, viewProjectionMatrix), viewportMatrix);
+	start[7] = Transform(Transform({ aabb.min.x, aabb.max.y, aabb.max.z }, viewProjectionMatrix), viewportMatrix);
+	end[7] = Transform(Transform({ aabb.max.x, aabb.max.y, aabb.max.z }, viewProjectionMatrix), viewportMatrix);
+	start[8] = Transform(Transform(aabb.max, viewProjectionMatrix), viewportMatrix);
+	end[8] = Transform(Transform({ aabb.max.x, aabb.max.y, aabb.min.z }, viewProjectionMatrix), viewportMatrix);
+	start[9] = Transform(Transform({ aabb.max.x, aabb.max.y, aabb.min.z }, viewProjectionMatrix), viewportMatrix);
+	end[9] = Transform(Transform({ aabb.max.x, aabb.min.y, aabb.min.z }, viewProjectionMatrix), viewportMatrix);
+	start[10] = Transform(Transform({ aabb.max.x, aabb.min.y, aabb.min.z }, viewProjectionMatrix), viewportMatrix);
+	end[10] = Transform(Transform({ aabb.max.x, aabb.min.y, aabb.max.z }, viewProjectionMatrix), viewportMatrix);
+	start[11] = Transform(Transform({ aabb.max.x, aabb.min.y, aabb.max.z }, viewProjectionMatrix), viewportMatrix);
+	end[11] = Transform(Transform(aabb.max, viewProjectionMatrix), viewportMatrix);
+
+	for (uint32_t i = 0; i < 12; i++) {
+		Novice::DrawLine(int(start[i].x), int(start[i].y), int(end[i].x), int(end[i].y), color);
+	}
+}
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
@@ -811,26 +861,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	char preKeys[256] = { 0 };
 
 
-	Vector3 cameraTranslate{ 0.0f,0.0f,-10.0f };
-	Vector3 cameraRotato{ 0.0f,0.0f,0.0f };
+	AABB aabb1{
+			.min{-0.5f, -0.5f, -0.5f},
+			.max{0.0f, 0.0f, 0.0f},
+	};
+
+	AABB aabb2{
+		.min{0.2f, 0.2f, 0.2f},
+		.max{1.0f, 1.0f, 1.0f},
+	};
 
 
 
-	Segment segmrnt;
-	segmrnt.diff = { 0.45f,0.78f,0.0f };
-	segmrnt.origin = { 1.0f,0.58f,0.0f };
+	Vector3 rotate = {};
+	Vector3 translate = {};
+	Vector3 cameraRotate = { 0.0f, 0.0f, 0.0f };
+	Vector3 cameraTranslate = { 0.0f, 0.0f, -9.49f };
+	Vector3 cameraPosition = { 0,0,-5.0f };
 
-	Triangle triangle;
-	triangle.vertices[0] = { -1.0f, 0.0f, 0.0f };
-	triangle.vertices[1] = { 0.0f, 1.0f, 0.0f };
-	triangle.vertices[2] = { 1.0f, 0.0f, 0.0f };
-
-	Vector3 rotate{};
-	Vector3 translate{};
-	Vector3 Scale = { 1.0f,1.0f,1.0f };
-
-	Vector3 start{};
-	Vector3 end{};
+	Matrix4x4 viewProjectionMatrix = {};
+	Matrix4x4 viewportMatrix = {};
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -845,30 +895,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		/// ↓更新処理ここから
 		///
 
-		Matrix4x4 worldMatrix = MakeAffineMatrix(Scale, rotate, translate);
-		Matrix4x4 cameraMatrix = MakeAffineMatrix(Scale, cameraRotato, cameraTranslate);
-		Matrix4x4 viewMatrix = Invers(cameraMatrix);
-		Matrix4x4 projectionMatrix = MakePersectiveFovMatrix(0.45f, float(kWindowWith) / float(kWindowHigat), 0.1f, 100.0f);
-		Matrix4x4 viewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
-		Matrix4x4 viewportMatrix = MakeViewportMatrix(0, 0, float(kWindowWith), float(kWindowHigat), 0.0f, 1.0f);
+		viewProjectionMatrix = MakeViewProjectionMatrix({ 1, 1, 1 }, rotate, translate, { 1, 1, 1 }, cameraRotate, cameraTranslate);
+		viewportMatrix = MakeViewportMatrix(0, 0, float(kWindowWith), float(kWindowHigat), 0.0f, 1.0f);
 
 
+		ImGui::DragFloat3("aabb1.min.", &aabb1.min.x, 0.01f);
+		ImGui::DragFloat3("aabb1.max.", &aabb1.max.x, 0.01f);
+		ImGui::DragFloat3("aabb2.min.", &aabb2.min.x, 0.01f);
+		ImGui::DragFloat3("aabb2.max.", &aabb2.max.x, 0.01f);
+		ImGui::DragFloat3("cameraRotate", &cameraRotate.x, 0.01f);
+		ImGui::DragFloat3("cameraTranslate", &cameraTranslate.x, 0.01f);
 
-		ImGui::Begin("Window");
-		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
-		ImGui::DragFloat3("CameraRotato", &cameraRotato.x, 0.01f);
-		ImGui::DragFloat3("segmrnt.diff", &segmrnt.diff.x, 0.01f);
-		ImGui::DragFloat("segmrnt.origin", &segmrnt.origin.x, 0.01f);
-		ImGui::DragFloat3("triangle.vertices[0]", &triangle.vertices[0].x, 0.01f);
-		ImGui::DragFloat3("triangle.vertices[1]", &triangle.vertices[1].x, 0.01f);
-		ImGui::DragFloat3("triangle.vertices[2]", &triangle.vertices[2].x, 0.01f);
-
-		ImGui::End();
-
-
-
-		start = Transform(Transform(segmrnt.diff, viewProjectionMatrix), viewportMatrix);
-		end = Transform(Transform(segmrnt.origin, viewProjectionMatrix), viewportMatrix);
+		aabb1.min.x = (std::min)(aabb1.min.x, aabb1.max.x);
+		aabb1.max.x = (std::max)(aabb1.min.x, aabb1.max.x);
+		aabb1.min.y = (std::min)(aabb1.min.y, aabb1.max.y);
+		aabb1.max.y = (std::max)(aabb1.min.y, aabb1.max.y);
+		aabb1.min.z = (std::min)(aabb1.min.z, aabb1.max.z);
+		aabb1.max.z = (std::max)(aabb1.min.z, aabb1.max.z);
+		aabb2.min.x = (std::min)(aabb2.min.x, aabb2.max.x);
+		aabb2.max.x = (std::max)(aabb2.min.x, aabb2.max.x);
+		aabb2.min.y = (std::min)(aabb2.min.y, aabb2.max.y);
+		aabb2.max.y = (std::max)(aabb2.min.y, aabb2.max.y);
+		aabb2.min.z = (std::min)(aabb2.min.z, aabb2.max.z);
+		aabb2.max.z = (std::max)(aabb2.min.z, aabb2.max.z);
 
 		///
 		///
@@ -881,15 +930,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		///
 		/// ↓描画処理ここから
 		///
-		DrawTriangle(triangle, viewProjectionMatrix, viewportMatrix, WHITE);
-
-		Novice::DrawLine((int)start.x, (int)start.y, (int)end.x, (int)end.y, WHITE);
-		if (IsCollision(triangle, segmrnt)) {
-			Novice::DrawLine((int)start.x, (int)start.y, (int)end.x, (int)end.y, RED);
-
-		}
-
 		DrawGrid(viewProjectionMatrix, viewportMatrix);
+		DrawAABB(aabb1, viewProjectionMatrix, viewportMatrix, WHITE);
+		DrawAABB(aabb2, viewProjectionMatrix, viewportMatrix, WHITE);
+
+		if (IsCollision(aabb1, aabb2)) {
+			DrawAABB(aabb1, viewProjectionMatrix, viewportMatrix, RED);
+		}
 
 
 		///
