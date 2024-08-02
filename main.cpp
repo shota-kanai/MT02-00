@@ -789,6 +789,33 @@ bool IsCollision(const AABB& aabb, const Sphere& sphere) {
 
 	return false;
 }
+//aabbと線
+bool IsCollision(const AABB& aabb, const Segment& segment) {
+	float tXMin = (aabb.min.x - segment.origin.x) / segment.diff.x;
+	float tYMin = (aabb.min.y - segment.origin.y) / segment.diff.y;
+	float tZMin = (aabb.min.z - segment.origin.z) / segment.diff.z;
+	float tXMax = (aabb.max.x - segment.origin.x) / segment.diff.x;
+	float tYMax = (aabb.max.y - segment.origin.y) / segment.diff.y;
+	float tZMax = (aabb.max.z - segment.origin.z) / segment.diff.z;
+
+	float tNearX = min(tXMin, tXMax);
+	float tNearY = min(tYMin, tYMax);
+	float tNearZ = min(tZMin, tZMax);
+	float tFarX = max(tXMin, tXMax);
+	float tFarY = max(tYMin, tYMax);
+	float tFarZ = max(tZMin, tZMax);
+
+
+	float tMin = max(max(tNearX, tNearY), tNearZ);
+
+	float tMax = min(min(tFarX, tFarY), tFarZ);
+
+	if (tMin <= tMax) {
+		return true;
+	}
+
+	return false;
+}
 
 Vector3 Perpendicular(const Vector3& vector) {
 	if (vector.x != 0.0f || vector.y != 0.0f) {
@@ -878,9 +905,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Vector3 cameraTranslate{ 0.0f,0.0f,-10.0f };
 	Vector3 cameraRotato{ 0.0f,0.0f,0.0f };
 
-	Sphere sphere;
-	sphere.center = { 0.0f, 0.0f, 0.0f };
-	sphere.radius = 0.5;
+	Segment segmrnt;
+	segmrnt.diff = { 0.45f,0.78f,0.0f };
+	segmrnt.origin = { 1.0f,0.58f,0.0f };
+
 
 	AABB aabb{
 				.min{-0.5f, -0.5f, -0.5f},
@@ -889,6 +917,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Vector3 rotate{};
 	Vector3 translate{};
 	Vector3 Scale = { 1.0f,1.0f,1.0f };
+
+	Vector3 start{};
+	Vector3 end{};
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -912,19 +943,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-		ImGui::DragFloat3("sphere.center", &sphere.center.x, 0.01f);
-		ImGui::DragFloat("sphere.radius", &sphere.radius, 0.01f);
+		ImGui::DragFloat3("sphere.center", &segmrnt.diff.x, 0.01f);
+		ImGui::DragFloat("sphere.origin", &segmrnt.origin.x, 0.01f);
 		ImGui::DragFloat3("aabb.min", &aabb.min.x, 0.01f);
 		ImGui::DragFloat3("aabb.max", &aabb.max.x, 0.01f);
 		ImGui::DragFloat3("cameraRotate", &cameraRotato.x, 0.01f);
 		ImGui::DragFloat3("cameraTranslate", &cameraTranslate.x, 0.01f);
 
-		aabb.min.x = (std::min)(aabb.min.x, aabb.max.x);
-		aabb.max.x = (std::max)(aabb.min.x, aabb.max.x);
-		aabb.min.y = (std::min)(aabb.min.y, aabb.max.y);
-		aabb.max.y = (std::max)(aabb.min.y, aabb.max.y);
-		aabb.min.z = (std::min)(aabb.min.z, aabb.max.z);
-		aabb.max.z = (std::max)(aabb.min.z, aabb.max.z);
+		start = Transform(Transform(segmrnt.diff, viewProjectionMatrix), viewportMatrix);
+		end = Transform(Transform(segmrnt.origin, viewProjectionMatrix), viewportMatrix);
 
 		///
 		///
@@ -939,12 +966,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		///
 		DrawGrid(viewProjectionMatrix, viewportMatrix);
 
-		DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, WHITE);
+		Novice::DrawLine((int)start.x, (int)start.y, (int)end.x, (int)end.y, WHITE);
 		DrawAABB(aabb, viewProjectionMatrix, viewportMatrix, WHITE);
 
 
-		if (IsCollision(aabb, sphere)) {
-			DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, RED);
+		if (IsCollision(aabb, segmrnt)) {
+			Novice::DrawLine((int)start.x, (int)start.y, (int)end.x, (int)end.y, RED);
+
 		}
 
 
