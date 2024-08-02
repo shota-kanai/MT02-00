@@ -668,6 +668,17 @@ Matrix4x4 MakeViewProjectionMatrix(Vector3 scale, Vector3 rotate, Vector3 transl
 	return (Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix)));
 
 }
+//球と球の衝突
+
+bool IsCollision(const Sphere& s1, const Sphere& s2) {
+	float distance = Length(Subtract(s2.center, s1.center));
+	if (distance <= s1.radius + s2.radius) {
+
+		return true;
+
+	}
+	return false;
+}
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
@@ -680,25 +691,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	char preKeys[256] = { 0 };
 
 
-
-
-
-	Vector3 cameraRotato{ 0.26f,0.0f,0.0f };
 	Vector3 cameraTranslate{ 0.0f,1.9f,-6.49f };
-	Vector3 cameraScale{ 1.0f,1.0f,1.0f };
+	Vector3 cameraRotato{ 0.26f,0.0f,0.0f };
+
+	Sphere sphere;
+	sphere.center = { -10.0f, -40.0f, 162.0f };
+	sphere.radius = 30;
+
+	Sphere sphere2;
+	sphere2.center = { 40.0f, -40.0f,162.0f };
+	sphere2.radius = 20;
+
 	Vector3 rotate{};
 	Vector3 translate{};
 	Vector3 Scale = { 1.0f,1.0f,1.0f };
 
-	Segment segment{ {-2.0f,-1.0f,0.0f},{3.0f,2.0f,2.0f	} };
-	Vector3 point{ -1.5f,0.6f,0.6f };
-
-	Vector3 project = Project(Subtract(point, segment.origin), segment.diff);
-	Vector3 closestPoint = ClosestPoint(point, segment);
-
-
-	Sphere pointShere{ point,0.01f };
-	Sphere closesPoinstSphere{ closestPoint,0.01f };
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
 		// フレームの開始
@@ -712,9 +719,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		/// ↓更新処理ここから
 		///
 
-		project = Project(Subtract(point, segment.origin), segment.diff);
-		closestPoint = ClosestPoint(point, segment);
-
 		Matrix4x4 worldMatrix = MakeAffineMatrix(Scale, rotate, translate);
 		Matrix4x4 cameraMatrix = MakeAffineMatrix(Scale, cameraRotato, cameraTranslate);
 		Matrix4x4 viewMatrix = Invers(cameraMatrix);
@@ -722,12 +726,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 		Matrix4x4 viewportMatrix = MakeViewportMatrix(0, 0, float(kWindowWith), float(kWindowHigat), 0.0f, 1.0f);
 
-		Vector3 start = Transform(Transform(segment.origin, worldViewProjectionMatrix), viewportMatrix);
-		Vector3 end = Transform(Transform(Add(segment.origin, segment.diff), worldViewProjectionMatrix), viewportMatrix);
 
-		ImGui::DragFloat3("project", &project.x, 0.1f);
-		ImGui::DragFloat3("closestPoint", &closestPoint.x, 0.1f);
-		ImGui::DragFloat3("point", &point.x, 0.1f);
+
+		ImGui::Begin("Window");
+		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
+		ImGui::DragFloat3("CameraRotato", &cameraRotato.x, 0.01f);
+		ImGui::DragFloat3("Sphere1Center", &sphere.center.x, 0.01f);
+		ImGui::DragFloat("Sphere1Radius", &sphere.radius, 0.01f);
+		ImGui::DragFloat3("Sphere2Center", &sphere2.center.x, 0.01f);
+		ImGui::DragFloat("Sphere2Radius", &sphere2.radius, 0.01f);
+		ImGui::End();
 
 		///
 		///
@@ -740,9 +748,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		///
 		/// ↓描画処理ここから
 		///
-		DrawSphere(pointShere, worldViewProjectionMatrix, viewportMatrix, RED);
-		DrawSphere(closesPoinstSphere, worldViewProjectionMatrix, viewportMatrix, BLACK);
-		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), WHITE);
+		DrawSphere(sphere, worldViewProjectionMatrix, viewportMatrix, WHITE);
+
+		DrawSphere(sphere2, worldViewProjectionMatrix, viewportMatrix, WHITE);
+
+		if (IsCollision(sphere, sphere2)) {
+			DrawSphere(sphere2, worldViewProjectionMatrix, viewportMatrix, RED);
+		}
+
+
 
 		DrawGrid(worldViewProjectionMatrix, viewportMatrix);
 
