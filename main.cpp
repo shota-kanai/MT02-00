@@ -737,16 +737,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	char preKeys[256] = { 0 };
 
 
-	Vector3 cameraTranslate{ 0.0f,0.0f,-10.0f };
-	Vector3 cameraRotato{ 0.0f,0.0f,0.0f };
+	Vector3 cameraTranslate{ 0.0f,1.9f,-6.49f };
+	Vector3 cameraRotato{ 0.26f,0.0f,0.0f };
 
 	Sphere sphere;
-	sphere.center = { 0.0f, 0.0f, 0.0f };
-	sphere.radius = 0.5;
+	sphere.center = { -10.0f, -40.0f, 162.0f };
+	sphere.radius = 30;
 
-	Plane plane;
-	plane.distance = 1.0f;
-	plane.normal = { 0.0f,1.0f,0.0f };
+	Sphere sphere2;
+	sphere2.center = { 40.0f, -40.0f,162.0f };
+	sphere2.radius = 20;
 
 	Vector3 rotate{};
 	Vector3 translate{};
@@ -769,7 +769,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		Matrix4x4 cameraMatrix = MakeAffineMatrix(Scale, cameraRotato, cameraTranslate);
 		Matrix4x4 viewMatrix = Invers(cameraMatrix);
 		Matrix4x4 projectionMatrix = MakePersectiveFovMatrix(0.45f, float(kWindowWith) / float(kWindowHigat), 0.1f, 100.0f);
-		Matrix4x4 viewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
+		Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
 		Matrix4x4 viewportMatrix = MakeViewportMatrix(0, 0, float(kWindowWith), float(kWindowHigat), 0.0f, 1.0f);
 
 
@@ -777,14 +777,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		ImGui::Begin("Window");
 		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("CameraRotato", &cameraRotato.x, 0.01f);
-		ImGui::DragFloat3("SphereCenter", &sphere.center.x, 0.01f);
-		ImGui::DragFloat("SphereRadius", &sphere.radius, 0.01f);
-		ImGui::DragFloat3("Plane.Normal", &plane.normal.x, 0.01f);
-		ImGui::DragFloat("Plane.distance", &plane.distance, 0.01f);
-
+		ImGui::DragFloat3("Sphere1Center", &sphere.center.x, 0.01f);
+		ImGui::DragFloat("Sphere1Radius", &sphere.radius, 0.01f);
+		ImGui::DragFloat3("Sphere2Center", &sphere2.center.x, 0.01f);
+		ImGui::DragFloat("Sphere2Radius", &sphere2.radius, 0.01f);
 		ImGui::End();
-
-		plane.normal = Normalize(plane.normal);
 
 		///
 		///
@@ -797,16 +794,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		///
 		/// ↓描画処理ここから
 		///
-		DrawPlane(plane, viewProjectionMatrix, viewportMatrix, WHITE);
-		DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, WHITE);
+		DrawSphere(sphere, worldViewProjectionMatrix, viewportMatrix, WHITE);
 
-		if (IsCollision(sphere, plane)) {
-			DrawSphere(sphere, viewProjectionMatrix, viewportMatrix, RED);
+		DrawSphere(sphere2, worldViewProjectionMatrix, viewportMatrix, WHITE);
+
+		if (IsCollision(sphere, sphere2)) {
+			DrawSphere(sphere2, worldViewProjectionMatrix, viewportMatrix, RED);
 		}
 
 
 
-		DrawGrid(viewProjectionMatrix, viewportMatrix);
+		DrawGrid(worldViewProjectionMatrix, viewportMatrix);
 
 
 		///
